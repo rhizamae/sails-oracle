@@ -4,6 +4,7 @@ var oracle = require('oracle');
 var sql = require('./lib/sql.js');
 var Query = require('./lib/query');
 var utils = require('./utils');
+var libUtils = require('./lib/utils');
 _.str = require('underscore.string');
 var Sequel = require('waterline-sequel');
 var Processor = require('./lib/processor');
@@ -131,10 +132,22 @@ module.exports = (function() {
         // Optional hook fired when a model is unregistered, typically at server halt
         // useful for tearing down remaining open connections, etc.
         teardown: function(connectionName, cb) {
-            var pool = connections[connectionName].connection;
-            pool.drain(function() {
-                pool.destroyAllNow();
-            });
+            var existingConnections = [];
+
+            if(connectionName === null) {
+                existingConnections = libUtils.getSailsDBConnections(connections);
+            }
+            else {
+                existingConnections.push(connections[connectionName]);
+            }
+
+            for(var i = 0; i < existingConnections.length; i++) {
+                var pool = existingConnections[i].connection;
+                pool.drain(function() {
+                    pool.destroyAllNow();
+                });
+            }
+
             return cb();
         },
         // REQUIRED method if integrating with a schemaful database
